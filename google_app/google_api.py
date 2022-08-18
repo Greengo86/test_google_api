@@ -53,6 +53,10 @@ class GoogleApi:
         logger.error('USD curs not found')
         return DEFAULT_USD_RATE
 
+    @staticmethod
+    def get_orders_by_db() -> set:
+        return set(Order.objects.values_list('order_number', flat=True))
+
     def get_values_by_spreadsheet(self) -> list:
         values = self.service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEET_ID,
@@ -62,26 +66,24 @@ class GoogleApi:
         return values.get('values')
 
     @staticmethod
-    def prepare_data_to_db(data_stub: list, dollar_rate: float) -> list:
+    def prepare_data_to_db(data_stub: list, dollar_rate: float, exclude_orders: set | None) -> list:
         """
-        Prepare list dicts for bulk inserting to DB in model Order.
+        Prepare list dicts for bulk inserting to DB in model Order. We will not include in the list of those orders that
+        need to be deleted
         """
-
         result = []
         for i in data_stub:
-            result.append({'number': i[0],
-                           'order_number': i[1],
-                           'price_dollars': i[2],
-                           'price_rubles': int(i[2]) * dollar_rate,
-                           'delivery_time': i[3]
-                           })
+            if int(i[1]) not in exclude_orders:
+                result.append({'number': i[0],
+                               'order_number': i[1],
+                               'price_dollars': i[2],
+                               'price_rubles': int(i[2]) * dollar_rate,
+                               'delivery_time': i[3]
+                               })
         return result
 
     @staticmethod
     def notification_expiration(data_db: list) -> None:
-        """
-        Let's notify about the delay in Telegram
-        """
         telegram = get_notifier('telegram')
         for item in data_db:
             if datetime.datetime.now() > datetime.datetime.strptime(item['delivery_time'], '%d.%m.%Y'):
@@ -91,17 +93,33 @@ class GoogleApi:
                     chat_id=TG_ID
                 )
 
+    @staticmethod
+    def create_or_update_orders(data_db: list) -> None:
+        Order.bulk_create_or_update(
+            uniques=['order_number'],
+            defaults=['order_number', 'number', 'price_dollars', 'price_rubles', 'delivery_time'],
+            data=data_db
+        )
+
+    @staticmethod
+    def delete_orders(orders: set) -> None:
+        Order.objects.filter(order_number__in=orders).delete()
+
     def proccess(self):
         dollar_rate = float(self.dollar_exchange_rate().replace(',', '.'))
         if not (values_by_spreadsheet := self.get_values_by_spreadsheet()):
             logger.error('Failed to get data from spreadsheet')
             return
 
-        data_db = self.prepare_data_to_db(values_by_spreadsheet, dollar_rate)
+        orders_db = self.get_orders_by_db()
+        orders_spreadsheet = {int(el[1]) for el in values_by_spreadsheet}
 
-        # Delete all orders first
-        Order.objects.all().delete()
-        Order.bulk_create_orders(uniques=['order_number'], data=data_db)
+        # If there are more orders in the database than in excel, then delete them
+        if diff_orders := orders_db - orders_spreadsheet:
+            self.delete_orders(diff_orders)
+
+        data_db = self.prepare_data_to_db(values_by_spreadsheet, dollar_rate, diff_orders)
+        self.create_or_update_orders(data_db)
         self.notification_expiration(data_db)
 
     def run(self):

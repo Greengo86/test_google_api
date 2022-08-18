@@ -12,10 +12,11 @@ class Order(models.Model):
         return self.order_number
 
     @classmethod
-    def bulk_create_orders(cls, uniques: list[str], data: list[dict]):
+    def bulk_create_or_update(cls, uniques: list[str], defaults: list[str], data: list[dict]):
         """
-        Multiple insert
+        Multiple insert or update if model exists
         """
+        # Get existing object list
         data_dict, select = {}, None
         for entry in data:
             sub_entry, key = {}, ''
@@ -38,15 +39,17 @@ class Order(models.Model):
             existing[key] = rec
 
         # Split new objects from existing ones
-        to_create = []
+        to_create, to_update = [], []
         for key, entry in data_dict.items():
             obj = cls(**entry)
             if key not in existing:
                 to_create.append(obj)
                 continue
             obj.pk = existing[key]['pk']
+            to_update.append(obj)
 
         cls.objects.bulk_create(to_create, batch_size=1000)
+        cls.objects.bulk_update(to_update, defaults, batch_size=1000)
 
     class Meta:
         verbose_name = 'Order'
