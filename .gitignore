@@ -1,0 +1,5 @@
+/data
+/log.log
+.env
+frontend/node_modules
+.idea
