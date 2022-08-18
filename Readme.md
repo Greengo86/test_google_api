@@ -12,11 +12,11 @@ https://docs.google.com/spreadsheets/d/1lpPGtsooRUJMBk_LIOKVbcGdPzeDdMiAaexn9KhY
 
 Cуществует 2 варианты решения:
 ````
-1. master-ветка - работает быстрее. Все Записи вначале удаляются, и затем массово записываются.
+1. master-ветка - https://github.com/Greengo86/test_google_api/tree/master работает быстрее. Все Записи вначале удаляются, и затем массово записываются.
 ````
 
 ````
-2. Second_Implementation_update_records-ветка - здесь мы сравниваем объекты из базы данных и из Google Sheets. Если в Sheets нет какого-либо обьекта, то вычислим его и удалим из базы. Остальные массово обновим, если они уже были в базе, если нет - запишем. Таким образом избегаем создание новых объектов базе, а только лишь обновляем
+2. Second_Implementation_update_records-ветка - https://github.com/Greengo86/test_google_api/tree/Second_Implementation_update_records  здесь мы сравниваем объекты из базы данных и из Google Sheets. Если в Sheets нет какого-либо обьекта, то вычислим его и удалим из базы. Остальные массово обновим, если они уже были в базе, если нет - запишем. Таким образом избегаем создание новых объектов базе, а только лишь обновляем
 ````
 
 ## Установка и запуск
@@ -114,3 +114,7 @@ docker-compose up --build
 ```
 http://0.0.0.0:8000/runner/
 ```
+
+![TG](https://github.com/Greengo86/test_google_api/blob/Second_Implementation_update_records/TG%20Notify.png)
+
+![React](https://github.com/Greengo86/test_google_api/blob/Second_Implementation_update_records/React.png)
