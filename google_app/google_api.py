@@ -106,7 +106,6 @@ class GoogleApi:
 
     def run(self):
         try:
-            print('Run Task')
             self.proccess()
         except Exception as err:
             logger.error(f'Failed Google Api Proccess with error - {err}')
